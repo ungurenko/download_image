@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S3 Uploader</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #0f0f0f;
+      color: #e0e0e0;
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    .container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 48px 24px;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 32px;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+
+    h1 span {
+      color: #646cff;
+    }
+
+    /* Drop Zone */
+    .drop-zone {
+      border: 2px dashed #333;
+      border-radius: 12px;
+      background: #1a1a1a;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+      user-select: none;
+      -webkit-user-select: none;
+      position: relative;
+    }
+
+    .drop-zone:hover {
+      border-color: #646cff;
+      background: #1e1e2e;
+    }
+
+    .drop-zone.drag-over {
+      border-color: #646cff;
+      background: #1e1e2e;
+      transform: scale(1.01);
+    }
+
+    .drop-zone__icon {
+      margin-bottom: 16px;
+    }
+
+    .drop-zone__icon svg {
+      width: 48px;
+      height: 48px;
+      color: #646cff;
+      transition: transform 0.2s ease;
+    }
+
+    .drop-zone:hover .drop-zone__icon svg,
+    .drop-zone.drag-over .drop-zone__icon svg {
+      transform: translateY(-2px);
+    }
+
+    .drop-zone__title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+      color: #e0e0e0;
+    }
+
+    .drop-zone__subtitle {
+      font-size: 0.85rem;
+      color: #888;
+    }
+
+    /* Upload Progress */
+    #uploadProgress {
+      margin-top: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .progress-item {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 16px;
+      animation: fadeSlideIn 0.25s ease;
+    }
+
+    .progress-item__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .progress-item__name {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #e0e0e0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 70%;
+    }
+
+    .progress-item__percent {
+      font-size: 0.8rem;
+      color: #888;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #2a2a2a;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .progress-bar__fill {
+      height: 100%;
+      background: #646cff;
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.15s ease;
+    }
+
+    .progress-bar__fill.success {
+      background: #22c55e;
+    }
+
+    .progress-bar__fill.error {
+      background: #ef4444;
+    }
+
+    /* Upload History */
+    .history-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      margin-top: 40px;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #2a2a2a;
+    }
+
+    #uploadHistory {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .history-item {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      animation: fadeSlideIn 0.25s ease;
+      transition: border-color 0.2s ease;
+    }
+
+    .history-item:hover {
+      border-color: #444;
+    }
+
+    .history-item__preview {
+      width: 56px;
+      height: 56px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #2a2a2a;
+      flex-shrink: 0;
+    }
+
+    .history-item__info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .history-item__name {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #e0e0e0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .history-item__url {
+      font-size: 0.75rem;
+      color: #888;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-top: 2px;
+    }
+
+    .btn-copy {
+      flex-shrink: 0;
+      background: #646cff;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+      white-space: nowrap;
+      font-family: inherit;
+    }
+
+    .btn-copy:hover {
+      background: #535bf2;
+    }
+
+    .btn-copy:active {
+      transform: scale(0.96);
+    }
+
+    /* Toast Notifications */
+    #toastContainer {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    .toast {
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #fff;
+      pointer-events: auto;
+      animation: toastSlideIn 0.3s ease;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      max-width: 320px;
+      word-break: break-word;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    .toast.success {
+      background: #22c55e;
+    }
+
+    .toast.error {
+      background: #ef4444;
+    }
+
+    .toast.removing {
+      animation: toastSlideOut 0.25s ease forwards;
+    }
+
+    /* Animations */
+    @keyframes toastSlideIn {
+      from {
+        opacity: 0;
+        transform: translateX(40px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes toastSlideOut {
+      from {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateX(40px);
+      }
+    }
+
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .container {
+        padding: 32px 16px;
+      }
+
+      h1 {
+        font-size: 1.4rem;
+        margin-bottom: 24px;
+      }
+
+      .drop-zone {
+        padding: 36px 16px;
+      }
+
+      .drop-zone__icon svg {
+        width: 40px;
+        height: 40px;
+      }
+
+      .drop-zone__title {
+        font-size: 1rem;
+      }
+
+      .history-item {
+        padding: 10px;
+        gap: 10px;
+      }
+
+      .history-item__preview {
+        width: 44px;
+        height: 44px;
+      }
+
+      .btn-copy {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+      }
+
+      #toastContainer {
+        top: 12px;
+        right: 12px;
+        left: 12px;
+      }
+
+      .toast {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1><span>S3</span> Uploader</h1>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="drop-zone__icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 16V4"/>
+          <path d="M8 8l4-4 4 4"/>
+          <path d="M20 16.7A4.5 4.5 0 0 0 17.5 8h-1.12A7 7 0 1 0 4 14.25"/>
+        </svg>
+      </div>
+      <div class="drop-zone__title">Перетащите изображения сюда</div>
+      <div class="drop-zone__subtitle">или нажмите для выбора</div>
+    </div>
+
+    <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.svg" hidden>
+
+    <div id="uploadProgress"></div>
+
+    <div id="historySection" style="display:none;">
+      <div class="history-title">Загруженные файлы</div>
+      <div id="uploadHistory"></div>
+    </div>
+  </div>
+
+  <div id="toastContainer"></div>
+
+  <script>
+    (function () {
+      'use strict';
+
+      var MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+      var ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+      var ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+      var UPLOAD_URL = '/api/upload';
+      var TOAST_DURATION = 3000;
+
+      var uploadHistory = [];
+
+      var dropZone = document.getElementById('dropZone');
+      var fileInput = document.getElementById('fileInput');
+      var uploadProgressContainer = document.getElementById('uploadProgress');
+      var uploadHistoryContainer = document.getElementById('uploadHistory');
+      var historySection = document.getElementById('historySection');
+      var toastContainer = document.getElementById('toastContainer');
+
+      // --- Toast ---
+      function showToast(message, type) {
+        var toast = document.createElement('div');
+        toast.className = 'toast ' + type;
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+
+        setTimeout(function () {
+          toast.classList.add('removing');
+          toast.addEventListener('animationend', function () {
+            if (toast.parentNode) {
+              toast.parentNode.removeChild(toast);
+            }
+          });
+        }, TOAST_DURATION);
+      }
+
+      // --- Clipboard ---
+      function copyToClipboard(text) {
+        try {
+          navigator.clipboard.writeText(text).then(function () {
+            showToast('Ссылка скопирована!', 'success');
+          }).catch(function () {
+            fallbackCopy(text);
+          });
+        } catch (e) {
+          fallbackCopy(text);
+        }
+      }
+
+      function fallbackCopy(text) {
+        var textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          showToast('Ссылка скопирована!', 'success');
+        } catch (e) {
+          showToast('Не удалось скопировать ссылку', 'error');
+        }
+        document.body.removeChild(textarea);
+      }
+
+      // --- Validation ---
+      function validateFile(file) {
+        if (file.size > MAX_FILE_SIZE) {
+          showToast('Файл "' + file.name + '" превышает 10 МБ', 'error');
+          return false;
+        }
+
+        var ext = '.' + file.name.split('.').pop().toLowerCase();
+        var typeOk = ALLOWED_TYPES.indexOf(file.type) !== -1;
+        var extOk = ALLOWED_EXTENSIONS.indexOf(ext) !== -1;
+
+        if (!typeOk && !extOk) {
+          showToast('Формат файла "' + file.name + '" не поддерживается', 'error');
+          return false;
+        }
+
+        return true;
+      }
+
+      // --- Drag and Drop ---
+      var dragCounter = 0;
+
+      dropZone.addEventListener('dragenter', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter++;
+        dropZone.classList.add('drag-over');
+      });
+
+      dropZone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      });
+
+      dropZone.addEventListener('dragleave', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter--;
+        if (dragCounter <= 0) {
+          dragCounter = 0;
+          dropZone.classList.remove('drag-over');
+        }
+      });
+
+      dropZone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter = 0;
+        dropZone.classList.remove('drag-over');
+
+        var files = e.dataTransfer.files;
+        if (files.length > 0) {
+          handleFiles(files);
+        }
+      });
+
+      dropZone.addEventListener('click', function () {
+        fileInput.click();
+      });
+
+      fileInput.addEventListener('change', function () {
+        if (fileInput.files.length > 0) {
+          handleFiles(fileInput.files);
+        }
+        fileInput.value = '';
+      });
+
+      // Touch support — tap already works via click handler.
+      // Prevent zoom on double-tap on iOS.
+      dropZone.addEventListener('touchend', function (e) {
+        e.preventDefault();
+        fileInput.click();
+      });
+
+      // --- File Handling ---
+      function handleFiles(fileList) {
+        var validFiles = [];
+        for (var i = 0; i < fileList.length; i++) {
+          if (validateFile(fileList[i])) {
+            validFiles.push(fileList[i]);
+          }
+        }
+
+        if (validFiles.length === 0) return;
+
+        uploadFiles(validFiles);
+      }
+
+      // --- Upload ---
+      function uploadFiles(files) {
+        var formData = new FormData();
+        for (var i = 0; i < files.length; i++) {
+          formData.append('files', files[i]);
+        }
+
+        // Create individual progress items
+        var progressItems = [];
+        for (var j = 0; j < files.length; j++) {
+          var item = createProgressItem(files[j].name);
+          progressItems.push(item);
+          uploadProgressContainer.appendChild(item.element);
+        }
+
+        var xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', function (e) {
+          if (e.lengthComputable) {
+            var percent = Math.round((e.loaded / e.total) * 100);
+            for (var k = 0; k < progressItems.length; k++) {
+              updateProgressItem(progressItems[k], percent);
+            }
+          }
+        });
+
+        xhr.addEventListener('load', function () {
+          if (xhr.status === 200) {
+            var response;
+            try {
+              response = JSON.parse(xhr.responseText);
+            } catch (e) {
+              for (var m = 0; m < progressItems.length; m++) {
+                setProgressError(progressItems[m]);
+              }
+              showToast('Ошибка разбора ответа сервера', 'error');
+              removeProgressItemsDelayed(progressItems);
+              return;
+            }
+
+            for (var n = 0; n < progressItems.length; n++) {
+              setProgressSuccess(progressItems[n]);
+            }
+
+            if (response.files && response.files.length > 0) {
+              for (var p = 0; p < response.files.length; p++) {
+                addToHistory(response.files[p]);
+              }
+
+              // Auto-copy first link
+              copyToClipboard(response.files[0].url);
+            }
+
+            removeProgressItemsDelayed(progressItems);
+
+          } else {
+            var errorMsg = 'Ошибка загрузки';
+            try {
+              var errResp = JSON.parse(xhr.responseText);
+              if (errResp.error) {
+                errorMsg = errResp.error;
+              }
+            } catch (e) {
+              // ignore parse error
+            }
+
+            for (var q = 0; q < progressItems.length; q++) {
+              setProgressError(progressItems[q]);
+            }
+            showToast(errorMsg, 'error');
+            removeProgressItemsDelayed(progressItems);
+          }
+        });
+
+        xhr.addEventListener('error', function () {
+          for (var r = 0; r < progressItems.length; r++) {
+            setProgressError(progressItems[r]);
+          }
+          showToast('Ошибка сети при загрузке', 'error');
+          removeProgressItemsDelayed(progressItems);
+        });
+
+        xhr.addEventListener('abort', function () {
+          for (var s = 0; s < progressItems.length; s++) {
+            setProgressError(progressItems[s]);
+          }
+          removeProgressItemsDelayed(progressItems);
+        });
+
+        xhr.open('POST', UPLOAD_URL);
+        xhr.send(formData);
+      }
+
+      // --- Progress Items ---
+      function createProgressItem(filename) {
+        var el = document.createElement('div');
+        el.className = 'progress-item';
+
+        var header = document.createElement('div');
+        header.className = 'progress-item__header';
+
+        var nameEl = document.createElement('div');
+        nameEl.className = 'progress-item__name';
+        nameEl.textContent = filename;
+
+        var percentEl = document.createElement('div');
+        percentEl.className = 'progress-item__percent';
+        percentEl.textContent = '0%';
+
+        header.appendChild(nameEl);
+        header.appendChild(percentEl);
+
+        var barWrapper = document.createElement('div');
+        barWrapper.className = 'progress-bar';
+
+        var barFill = document.createElement('div');
+        barFill.className = 'progress-bar__fill';
+
+        barWrapper.appendChild(barFill);
+
+        el.appendChild(header);
+        el.appendChild(barWrapper);
+
+        return {
+          element: el,
+          fill: barFill,
+          percent: percentEl
+        };
+      }
+
+      function updateProgressItem(item, percent) {
+        item.fill.style.width = percent + '%';
+        item.percent.textContent = percent + '%';
+      }
+
+      function setProgressSuccess(item) {
+        item.fill.style.width = '100%';
+        item.fill.classList.add('success');
+        item.percent.textContent = 'Готово';
+      }
+
+      function setProgressError(item) {
+        item.fill.classList.add('error');
+        item.percent.textContent = 'Ошибка';
+      }
+
+      function removeProgressItemsDelayed(items) {
+        setTimeout(function () {
+          for (var i = 0; i < items.length; i++) {
+            var el = items[i].element;
+            el.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            el.style.opacity = '0';
+            el.style.transform = 'translateY(-8px)';
+            (function (element) {
+              setTimeout(function () {
+                if (element.parentNode) {
+                  element.parentNode.removeChild(element);
+                }
+              }, 300);
+            })(el);
+          }
+        }, 1500);
+      }
+
+      // --- History ---
+      function addToHistory(fileData) {
+        uploadHistory.unshift(fileData);
+        renderHistory();
+      }
+
+      function renderHistory() {
+        if (uploadHistory.length === 0) {
+          historySection.style.display = 'none';
+          return;
+        }
+
+        historySection.style.display = 'block';
+        uploadHistoryContainer.innerHTML = '';
+
+        for (var i = 0; i < uploadHistory.length; i++) {
+          var item = uploadHistory[i];
+          var el = createHistoryItem(item);
+          uploadHistoryContainer.appendChild(el);
+        }
+      }
+
+      function createHistoryItem(fileData) {
+        var item = document.createElement('div');
+        item.className = 'history-item';
+
+        var preview = document.createElement('img');
+        preview.className = 'history-item__preview';
+        preview.src = fileData.url;
+        preview.alt = fileData.filename;
+        preview.loading = 'lazy';
+        preview.onerror = function () {
+          this.style.display = 'none';
+        };
+
+        var info = document.createElement('div');
+        info.className = 'history-item__info';
+
+        var name = document.createElement('div');
+        name.className = 'history-item__name';
+        name.textContent = fileData.filename;
+
+        var url = document.createElement('div');
+        url.className = 'history-item__url';
+        url.textContent = fileData.url;
+        url.title = fileData.url;
+
+        info.appendChild(name);
+        info.appendChild(url);
+
+        var copyBtn = document.createElement('button');
+        copyBtn.className = 'btn-copy';
+        copyBtn.textContent = 'Скопировать';
+        copyBtn.type = 'button';
+        copyBtn.addEventListener('click', function () {
+          copyToClipboard(fileData.url);
+        });
+
+        item.appendChild(preview);
+        item.appendChild(info);
+        item.appendChild(copyBtn);
+
+        return item;
+      }
+    })();
+  </script>
+</body>
+</html>
