@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>S3 Uploader</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after {
       box-sizing: border-box;
@@ -12,13 +15,30 @@
     }
 
     body {
-      background: #0f0f0f;
-      color: #e0e0e0;
-      font-family: system-ui, -apple-system, sans-serif;
+      background: #F6F3EE;
+      color: #2C2418;
+      font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
       line-height: 1.5;
       min-height: 100vh;
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+      position: relative;
+    }
+
+    /* Grain texture overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 256px 256px;
+      z-index: 9999;
     }
 
     .container {
@@ -28,41 +48,57 @@
     }
 
     h1 {
-      font-size: 1.75rem;
-      font-weight: 700;
+      font-family: 'DM Serif Display', serif;
+      font-size: 2rem;
+      font-weight: 400;
       text-align: center;
       margin-bottom: 32px;
-      letter-spacing: -0.02em;
-      color: #fff;
+      letter-spacing: -0.01em;
+      color: #2C2418;
     }
 
     h1 span {
-      color: #646cff;
+      position: relative;
+      display: inline-block;
+    }
+
+    h1 span::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 2px;
+      height: 3px;
+      background: #1A7A6D;
+      border-radius: 2px;
     }
 
     /* Drop Zone */
     .drop-zone {
-      border: 2px dashed #333;
+      border: 2px dashed #E8E2D9;
       border-radius: 12px;
-      background: #1a1a1a;
+      background: #FFFFFF;
       padding: 48px 24px;
       text-align: center;
       cursor: pointer;
-      transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+      transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
       user-select: none;
       -webkit-user-select: none;
       position: relative;
+      box-shadow: 0 1px 2px rgba(44,36,24,0.04), 0 4px 12px rgba(44,36,24,0.06);
     }
 
     .drop-zone:hover {
-      border-color: #646cff;
-      background: #1e1e2e;
+      border-color: #1A7A6D;
+      background: #FAFAF7;
+      box-shadow: 0 1px 3px rgba(44,36,24,0.06), 0 6px 16px rgba(44,36,24,0.08);
     }
 
     .drop-zone.drag-over {
-      border-color: #646cff;
-      background: #1e1e2e;
+      border-color: #1A7A6D;
+      background: #F0FAF8;
       transform: scale(1.01);
+      box-shadow: 0 1px 3px rgba(44,36,24,0.06), 0 6px 16px rgba(44,36,24,0.08);
     }
 
     .drop-zone__icon {
@@ -72,7 +108,7 @@
     .drop-zone__icon svg {
       width: 48px;
       height: 48px;
-      color: #646cff;
+      color: #1A7A6D;
       transition: transform 0.2s ease;
     }
 
@@ -85,12 +121,123 @@
       font-size: 1.1rem;
       font-weight: 600;
       margin-bottom: 4px;
-      color: #e0e0e0;
+      color: #2C2418;
     }
 
     .drop-zone__subtitle {
       font-size: 0.85rem;
-      color: #888;
+      color: #8C8277;
+    }
+
+    /* Compress Settings */
+    .compress-settings {
+      margin-top: 16px;
+      background: #FFFFFF;
+      border: 1px solid #E8E2D9;
+      border-radius: 12px;
+      padding: 0 16px;
+      box-shadow: 0 1px 2px rgba(44,36,24,0.04), 0 4px 12px rgba(44,36,24,0.06);
+      overflow: hidden;
+    }
+
+    .compress-settings__row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 48px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #2C2418;
+    }
+
+    .compress-toggle {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+      cursor: pointer;
+    }
+
+    .compress-toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .compress-toggle__track {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #D4CCC0;
+      border-radius: 12px;
+      transition: background-color 0.2s ease;
+    }
+
+    .compress-toggle__track::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      background: #FFFFFF;
+      border-radius: 50%;
+      transition: transform 0.2s ease;
+      box-shadow: 0 1px 3px rgba(44,36,24,0.15);
+    }
+
+    .compress-toggle input:checked + .compress-toggle__track {
+      background: #1A7A6D;
+    }
+
+    .compress-toggle input:checked + .compress-toggle__track::after {
+      transform: translateX(20px);
+    }
+
+    .compress-details {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 14px;
+      font-size: 0.82rem;
+      color: #8C8277;
+    }
+
+    .compress-details.open {
+      display: flex;
+    }
+
+    .compress-details input[type="range"] {
+      flex: 1;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: #E8E2D9;
+      border-radius: 2px;
+      outline: none;
+    }
+
+    .compress-details input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #1A7A6D;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(44,36,24,0.15);
+    }
+
+    .compress-details input[type="range"]::-moz-range-thumb {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #1A7A6D;
+      cursor: pointer;
+      border: none;
+      box-shadow: 0 1px 3px rgba(44,36,24,0.15);
     }
 
     /* Upload Progress */
@@ -102,11 +249,12 @@
     }
 
     .progress-item {
-      background: #1a1a1a;
-      border: 1px solid #333;
+      background: #FFFFFF;
+      border: 1px solid #E8E2D9;
       border-radius: 12px;
       padding: 16px;
       animation: fadeSlideIn 0.25s ease;
+      box-shadow: 0 1px 2px rgba(44,36,24,0.04), 0 4px 12px rgba(44,36,24,0.06);
     }
 
     .progress-item__header {
@@ -119,52 +267,60 @@
     .progress-item__name {
       font-size: 0.875rem;
       font-weight: 500;
-      color: #e0e0e0;
+      color: #2C2418;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
       max-width: 70%;
     }
 
+    .progress-item__compress-info {
+      font-size: 0.75rem;
+      color: #8C8277;
+      margin-top: 2px;
+      margin-bottom: 4px;
+    }
+
     .progress-item__percent {
       font-size: 0.8rem;
-      color: #888;
+      color: #8C8277;
       font-variant-numeric: tabular-nums;
     }
 
     .progress-bar {
       width: 100%;
       height: 6px;
-      background: #2a2a2a;
+      background: #F0ECE6;
       border-radius: 3px;
       overflow: hidden;
     }
 
     .progress-bar__fill {
       height: 100%;
-      background: #646cff;
+      background: #1A7A6D;
       border-radius: 3px;
       width: 0%;
       transition: width 0.15s ease;
     }
 
     .progress-bar__fill.success {
-      background: #22c55e;
+      background: #2D8B4E;
     }
 
     .progress-bar__fill.error {
-      background: #ef4444;
+      background: #C43E3E;
     }
 
     /* Upload History */
     .history-title {
-      font-size: 1rem;
-      font-weight: 600;
-      color: #fff;
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.1rem;
+      font-weight: 400;
+      color: #2C2418;
       margin-top: 40px;
       margin-bottom: 16px;
       padding-bottom: 8px;
-      border-bottom: 1px solid #2a2a2a;
+      border-bottom: 1px solid #E8E2D9;
     }
 
     #uploadHistory {
@@ -174,19 +330,21 @@
     }
 
     .history-item {
-      background: #1a1a1a;
-      border: 1px solid #333;
+      background: #FFFFFF;
+      border: 1px solid #E8E2D9;
       border-radius: 12px;
       padding: 12px;
       display: flex;
       align-items: center;
       gap: 12px;
       animation: fadeSlideIn 0.25s ease;
-      transition: border-color 0.2s ease;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      box-shadow: 0 1px 2px rgba(44,36,24,0.04), 0 4px 12px rgba(44,36,24,0.06);
     }
 
     .history-item:hover {
-      border-color: #444;
+      border-color: #D4CCC0;
+      box-shadow: 0 1px 3px rgba(44,36,24,0.06), 0 6px 16px rgba(44,36,24,0.08);
     }
 
     .history-item__preview {
@@ -194,7 +352,7 @@
       height: 56px;
       border-radius: 8px;
       object-fit: cover;
-      background: #2a2a2a;
+      background: #F0ECE6;
       flex-shrink: 0;
     }
 
@@ -206,7 +364,7 @@
     .history-item__name {
       font-size: 0.875rem;
       font-weight: 500;
-      color: #e0e0e0;
+      color: #2C2418;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -214,7 +372,7 @@
 
     .history-item__url {
       font-size: 0.75rem;
-      color: #888;
+      color: #8C8277;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -223,7 +381,7 @@
 
     .btn-copy {
       flex-shrink: 0;
-      background: #646cff;
+      background: #1A7A6D;
       color: #fff;
       border: none;
       border-radius: 8px;
@@ -237,7 +395,7 @@
     }
 
     .btn-copy:hover {
-      background: #535bf2;
+      background: #15665B;
     }
 
     .btn-copy:active {
@@ -252,7 +410,7 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      z-index: 9999;
+      z-index: 9998;
       pointer-events: none;
     }
 
@@ -264,18 +422,18 @@
       color: #fff;
       pointer-events: auto;
       animation: toastSlideIn 0.3s ease;
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 4px 20px rgba(44,36,24,0.15);
       max-width: 320px;
       word-break: break-word;
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
     }
 
     .toast.success {
-      background: #22c55e;
+      background: #2D8B4E;
     }
 
     .toast.error {
-      background: #ef4444;
+      background: #C43E3E;
     }
 
     .toast.removing {
@@ -323,7 +481,7 @@
       }
 
       h1 {
-        font-size: 1.4rem;
+        font-size: 1.6rem;
         margin-bottom: 24px;
       }
 
@@ -374,9 +532,9 @@
     <div class="drop-zone" id="dropZone">
       <div class="drop-zone__icon">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 16V4"/>
-          <path d="M8 8l4-4 4 4"/>
-          <path d="M20 16.7A4.5 4.5 0 0 0 17.5 8h-1.12A7 7 0 1 0 4 14.25"/>
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
         </svg>
       </div>
       <div class="drop-zone__title">Перетащите изображения сюда</div>
@@ -384,6 +542,20 @@
     </div>
 
     <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.gif,.webp,.svg" hidden>
+
+    <div class="compress-settings">
+      <div class="compress-settings__row">
+        <span>Сжатие изображений</span>
+        <label class="compress-toggle">
+          <input type="checkbox" id="compressToggle">
+          <span class="compress-toggle__track"></span>
+        </label>
+      </div>
+      <div class="compress-details" id="compressDetails">
+        <span>Качество: <span id="qualityValue">85</span>%</span>
+        <input type="range" id="qualitySlider" min="60" max="95" value="85">
+      </div>
+    </div>
 
     <div id="uploadProgress"></div>
 
@@ -405,6 +577,11 @@
       var UPLOAD_URL = '/api/upload';
       var TOAST_DURATION = 3000;
 
+      // Compression settings
+      var COMPRESS_THRESHOLD = 1 * 1024 * 1024; // 1 MB
+      var COMPRESS_MAX_DIMENSION = 4000;
+      var SKIP_COMPRESS_TYPES = ['image/svg+xml', 'image/gif'];
+
       var uploadHistory = [];
 
       var dropZone = document.getElementById('dropZone');
@@ -413,6 +590,46 @@
       var uploadHistoryContainer = document.getElementById('uploadHistory');
       var historySection = document.getElementById('historySection');
       var toastContainer = document.getElementById('toastContainer');
+      var compressToggle = document.getElementById('compressToggle');
+      var compressDetails = document.getElementById('compressDetails');
+      var qualitySlider = document.getElementById('qualitySlider');
+      var qualityValue = document.getElementById('qualityValue');
+
+      // --- Compression Toggle ---
+      function loadCompressSettings() {
+        try {
+          var saved = localStorage.getItem('compressEnabled');
+          if (saved === 'true') {
+            compressToggle.checked = true;
+            compressDetails.classList.add('open');
+          }
+          var savedQuality = localStorage.getItem('compressQuality');
+          if (savedQuality) {
+            qualitySlider.value = savedQuality;
+            qualityValue.textContent = savedQuality;
+          }
+        } catch (e) { /* localStorage unavailable */ }
+      }
+
+      compressToggle.addEventListener('change', function () {
+        if (compressToggle.checked) {
+          compressDetails.classList.add('open');
+        } else {
+          compressDetails.classList.remove('open');
+        }
+        try {
+          localStorage.setItem('compressEnabled', compressToggle.checked);
+        } catch (e) {}
+      });
+
+      qualitySlider.addEventListener('input', function () {
+        qualityValue.textContent = qualitySlider.value;
+        try {
+          localStorage.setItem('compressQuality', qualitySlider.value);
+        } catch (e) {}
+      });
+
+      loadCompressSettings();
 
       // --- Toast ---
       function showToast(message, type) {
@@ -479,6 +696,113 @@
         return true;
       }
 
+      // --- Image Compression ---
+      function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' Б';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' КБ';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' МБ';
+      }
+
+      function compressImage(file) {
+        return new Promise(function (resolve) {
+          // Skip non-compressible types
+          if (SKIP_COMPRESS_TYPES.indexOf(file.type) !== -1) {
+            resolve({ file: file, compressed: false });
+            return;
+          }
+
+          // Skip small files
+          if (file.size <= COMPRESS_THRESHOLD) {
+            resolve({ file: file, compressed: false });
+            return;
+          }
+
+          var quality = parseInt(qualitySlider.value, 10) / 100;
+          var isPng = file.type === 'image/png';
+          var outputType = isPng ? 'image/jpeg' : file.type;
+          // PNG quality slightly higher as specified in plan
+          var outputQuality = isPng ? Math.max(quality, 0.90) : quality;
+
+          var img = new Image();
+          var objectUrl = URL.createObjectURL(file);
+
+          img.onload = function () {
+            URL.revokeObjectURL(objectUrl);
+
+            var w = img.naturalWidth;
+            var h = img.naturalHeight;
+
+            // Resize if exceeds max dimension
+            if (w > COMPRESS_MAX_DIMENSION || h > COMPRESS_MAX_DIMENSION) {
+              if (w > h) {
+                h = Math.round(h * (COMPRESS_MAX_DIMENSION / w));
+                w = COMPRESS_MAX_DIMENSION;
+              } else {
+                w = Math.round(w * (COMPRESS_MAX_DIMENSION / h));
+                h = COMPRESS_MAX_DIMENSION;
+              }
+            }
+
+            var canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            var ctx = canvas.getContext('2d');
+
+            // White background for PNG → JPEG conversion (transparency)
+            if (isPng) {
+              ctx.fillStyle = '#FFFFFF';
+              ctx.fillRect(0, 0, w, h);
+            }
+
+            ctx.drawImage(img, 0, 0, w, h);
+
+            canvas.toBlob(function (blob) {
+              if (!blob || blob.size >= file.size) {
+                // Compressed is bigger or equal — use original
+                resolve({ file: file, compressed: false });
+                return;
+              }
+
+              // Build new filename
+              var newName = file.name;
+              if (isPng) {
+                newName = newName.replace(/\.png$/i, '.jpg');
+              }
+
+              var compressedFile = new File([blob], newName, { type: outputType });
+              resolve({
+                file: compressedFile,
+                compressed: true,
+                originalSize: file.size,
+                compressedSize: blob.size
+              });
+            }, outputType, outputQuality);
+          };
+
+          img.onerror = function () {
+            URL.revokeObjectURL(objectUrl);
+            // On error, use original
+            resolve({ file: file, compressed: false });
+          };
+
+          img.src = objectUrl;
+        });
+      }
+
+      function compressFiles(files) {
+        if (!compressToggle.checked) {
+          return Promise.resolve(files.map(function (f) {
+            return { file: f, compressed: false };
+          }));
+        }
+
+        var promises = files.map(function (f) {
+          return compressImage(f);
+        });
+
+        return Promise.all(promises);
+      }
+
       // --- Drag and Drop ---
       var dragCounter = 0;
 
@@ -527,8 +851,7 @@
         fileInput.value = '';
       });
 
-      // Touch support — tap already works via click handler.
-      // Prevent zoom on double-tap on iOS.
+      // Touch support
       dropZone.addEventListener('touchend', function (e) {
         e.preventDefault();
         fileInput.click();
@@ -545,20 +868,29 @@
 
         if (validFiles.length === 0) return;
 
-        uploadFiles(validFiles);
+        compressFiles(validFiles).then(function (results) {
+          uploadFiles(results);
+        });
       }
 
       // --- Upload ---
-      function uploadFiles(files) {
+      function uploadFiles(fileResults) {
         var formData = new FormData();
-        for (var i = 0; i < files.length; i++) {
-          formData.append('files', files[i]);
+        for (var i = 0; i < fileResults.length; i++) {
+          formData.append('files', fileResults[i].file);
         }
 
         // Create individual progress items
         var progressItems = [];
-        for (var j = 0; j < files.length; j++) {
-          var item = createProgressItem(files[j].name);
+        for (var j = 0; j < fileResults.length; j++) {
+          var compressInfo = null;
+          if (fileResults[j].compressed) {
+            compressInfo = {
+              originalSize: fileResults[j].originalSize,
+              compressedSize: fileResults[j].compressedSize
+            };
+          }
+          var item = createProgressItem(fileResults[j].file.name, compressInfo);
           progressItems.push(item);
           uploadProgressContainer.appendChild(item.element);
         }
@@ -642,7 +974,7 @@
       }
 
       // --- Progress Items ---
-      function createProgressItem(filename) {
+      function createProgressItem(filename, compressInfo) {
         var el = document.createElement('div');
         el.className = 'progress-item';
 
@@ -659,6 +991,16 @@
 
         header.appendChild(nameEl);
         header.appendChild(percentEl);
+        el.appendChild(header);
+
+        // Compression info line
+        if (compressInfo) {
+          var infoEl = document.createElement('div');
+          infoEl.className = 'progress-item__compress-info';
+          var reduction = Math.round((1 - compressInfo.compressedSize / compressInfo.originalSize) * 100);
+          infoEl.textContent = formatSize(compressInfo.originalSize) + ' → ' + formatSize(compressInfo.compressedSize) + ' (' + reduction + '% меньше)';
+          el.appendChild(infoEl);
+        }
 
         var barWrapper = document.createElement('div');
         barWrapper.className = 'progress-bar';
@@ -667,8 +1009,6 @@
         barFill.className = 'progress-bar__fill';
 
         barWrapper.appendChild(barFill);
-
-        el.appendChild(header);
         el.appendChild(barWrapper);
 
         return {
