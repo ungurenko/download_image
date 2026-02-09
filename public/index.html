@@ -402,6 +402,36 @@
       transform: scale(0.96);
     }
 
+    .btn-copy.copied {
+      background: #2D8B4E;
+      pointer-events: none;
+    }
+
+    .btn-copy.copied::before {
+      content: '✓ ';
+    }
+
+    .btn-cancel {
+      flex-shrink: 0;
+      background: transparent;
+      border: 1px solid #E8E2D9;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: #8C8277;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+      margin-left: 8px;
+    }
+
+    .btn-cancel:hover {
+      border-color: #C43E3E;
+      color: #C43E3E;
+      background: #FDF2F2;
+    }
+
     /* Toast Notifications */
     #toastContainer {
       position: fixed;
@@ -645,6 +675,41 @@
       visibility: visible;
     }
 
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: #8C8277;
+    }
+
+    .empty-state__icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 16px;
+      opacity: 0.4;
+      stroke-dasharray: 60;
+      stroke-dashoffset: 60;
+      animation: drawIcon 1.5s ease forwards;
+    }
+
+    .empty-state__title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #2C2418;
+      margin-bottom: 4px;
+    }
+
+    .empty-state__subtitle {
+      font-size: 0.875rem;
+      color: #8C8277;
+    }
+
+    @keyframes drawIcon {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
     /* Responsive */
     @media (max-width: 480px) {
       .container {
@@ -753,6 +818,15 @@
     <div id="historySection" style="display:none;">
       <div class="history-title">Загруженные файлы</div>
       <div id="uploadHistory"></div>
+      <div id="emptyState" class="empty-state">
+        <svg class="empty-state__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <div class="empty-state__title">Пока ничего не загружено</div>
+        <div class="empty-state__subtitle">Перетащите файлы или вставьте скриншот</div>
+      </div>
     </div>
   </div>
   </div>
@@ -901,6 +975,34 @@
       var SKIP_COMPRESS_TYPES = ['image/svg+xml', 'image/gif'];
 
       var uploadHistory = [];
+      var MAX_HISTORY_ITEMS = 50;
+      var HISTORY_STORAGE_KEY = 's3_upload_history';
+
+      // Load history from localStorage
+      function loadHistory() {
+        try {
+          var saved = localStorage.getItem(HISTORY_STORAGE_KEY);
+          if (saved) {
+            uploadHistory = JSON.parse(saved);
+            renderHistory();
+          }
+        } catch (e) {
+          console.log('Failed to load history:', e);
+        }
+      }
+
+      // Save history to localStorage
+      function saveHistory() {
+        try {
+          // Keep only last MAX_HISTORY_ITEMS
+          if (uploadHistory.length > MAX_HISTORY_ITEMS) {
+            uploadHistory = uploadHistory.slice(0, MAX_HISTORY_ITEMS);
+          }
+          localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(uploadHistory));
+        } catch (e) {
+          console.log('Failed to save history:', e);
+        }
+      }
 
       var dropZone = document.getElementById('dropZone');
       var fileInput = document.getElementById('fileInput');
@@ -948,6 +1050,33 @@
       });
 
       loadCompressSettings();
+
+      // --- Paste Support ---
+      document.addEventListener('paste', function(e) {
+        var items = e.clipboardData.items;
+        var files = [];
+        
+        for (var i = 0; i < items.length; i++) {
+          var item = items[i];
+          if (item.type.indexOf('image') !== -1) {
+            var blob = item.getAsFile();
+            if (blob) {
+              // Create a File with a meaningful name
+              var timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+              var extension = blob.type.split('/')[1] || 'png';
+              var filename = 'clipboard-' + timestamp + '.' + extension;
+              var file = new File([blob], filename, { type: blob.type });
+              files.push(file);
+            }
+          }
+        }
+        
+        if (files.length > 0) {
+          e.preventDefault();
+          showToast('Загрузка из clipboard...', 'success');
+          handleFiles(files);
+        }
+      });
 
       // --- Toast ---
       function showToast(message, type) {
@@ -1198,8 +1327,10 @@
           formData.append('files', fileResults[i].file);
         }
 
-        // Create individual progress items
+        // Create individual progress items with cancel support
         var progressItems = [];
+        var xhr = new XMLHttpRequest();
+        
         for (var j = 0; j < fileResults.length; j++) {
           var compressInfo = null;
           if (fileResults[j].compressed) {
@@ -1208,12 +1339,12 @@
               compressedSize: fileResults[j].compressedSize
             };
           }
-          var item = createProgressItem(fileResults[j].file.name, compressInfo);
+          var item = createProgressItem(fileResults[j].file.name, compressInfo, function() {
+            xhr.abort();
+          });
           progressItems.push(item);
           uploadProgressContainer.appendChild(item.element);
         }
-
-        var xhr = new XMLHttpRequest();
 
         xhr.upload.addEventListener('progress', function (e) {
           if (e.lengthComputable) {
@@ -1230,9 +1361,12 @@
             try {
               response = JSON.parse(xhr.responseText);
             } catch (e) {
-              for (var m = 0; m < progressItems.length; m++) {
-                setProgressError(progressItems[m]);
+            for (var m = 0; m < progressItems.length; m++) {
+              setProgressError(progressItems[m]);
+              if (progressItems[m].cancelBtn) {
+                progressItems[m].cancelBtn.style.display = 'none';
               }
+            }
               showToast('Ошибка разбора ответа сервера', 'error');
               removeProgressItemsDelayed(progressItems);
               return;
@@ -1240,6 +1374,9 @@
 
             for (var n = 0; n < progressItems.length; n++) {
               setProgressSuccess(progressItems[n]);
+              if (progressItems[n].cancelBtn) {
+                progressItems[n].cancelBtn.style.display = 'none';
+              }
             }
 
             if (response.files && response.files.length > 0) {
@@ -1257,6 +1394,9 @@
             // Session expired or invalid password
             for (var q = 0; q < progressItems.length; q++) {
               setProgressError(progressItems[q]);
+              if (progressItems[q].cancelBtn) {
+                progressItems[q].cancelBtn.style.display = 'none';
+              }
             }
             showToast('Сессия истекла. Требуется повторный вход.', 'error');
             removeProgressItemsDelayed(progressItems);
@@ -1273,6 +1413,9 @@
             // Rate limit exceeded
             for (var r = 0; r < progressItems.length; r++) {
               setProgressError(progressItems[r]);
+              if (progressItems[r].cancelBtn) {
+                progressItems[r].cancelBtn.style.display = 'none';
+              }
             }
             showToast('Слишком много запросов. Подождите минуту.', 'error');
             removeProgressItemsDelayed(progressItems);
@@ -1290,6 +1433,9 @@
 
             for (var s = 0; s < progressItems.length; s++) {
               setProgressError(progressItems[s]);
+              if (progressItems[s].cancelBtn) {
+                progressItems[s].cancelBtn.style.display = 'none';
+              }
             }
             showToast(errorMsg, 'error');
             removeProgressItemsDelayed(progressItems);
@@ -1299,6 +1445,9 @@
         xhr.addEventListener('error', function () {
           for (var r = 0; r < progressItems.length; r++) {
             setProgressError(progressItems[r]);
+            if (progressItems[r].cancelBtn) {
+              progressItems[r].cancelBtn.style.display = 'none';
+            }
           }
           showToast('Ошибка сети при загрузке', 'error');
           removeProgressItemsDelayed(progressItems);
@@ -1306,8 +1455,15 @@
 
         xhr.addEventListener('abort', function () {
           for (var s = 0; s < progressItems.length; s++) {
-            setProgressError(progressItems[s]);
+            var item = progressItems[s];
+            item.percent.textContent = 'Отменено';
+            item.fill.style.width = '0%';
+            item.fill.classList.add('error');
+            if (item.cancelBtn) {
+              item.cancelBtn.style.display = 'none';
+            }
           }
+          showToast('Загрузка отменена', 'error');
           removeProgressItemsDelayed(progressItems);
         });
 
@@ -1317,7 +1473,7 @@
       }
 
       // --- Progress Items ---
-      function createProgressItem(filename, compressInfo) {
+      function createProgressItem(filename, compressInfo, onCancel) {
         var el = document.createElement('div');
         el.className = 'progress-item';
 
@@ -1354,10 +1510,26 @@
         barWrapper.appendChild(barFill);
         el.appendChild(barWrapper);
 
+        // Cancel button
+        var cancelBtn = document.createElement('button');
+        cancelBtn.className = 'btn-cancel';
+        cancelBtn.textContent = 'Отменить';
+        cancelBtn.type = 'button';
+        cancelBtn.addEventListener('click', function() {
+          if (onCancel) {
+            onCancel();
+          }
+          cancelBtn.textContent = 'Отменено';
+          cancelBtn.disabled = true;
+          cancelBtn.style.opacity = '0.5';
+        });
+        header.appendChild(cancelBtn);
+
         return {
           element: el,
           fill: barFill,
-          percent: percentEl
+          percent: percentEl,
+          cancelBtn: cancelBtn
         };
       }
 
@@ -1398,17 +1570,23 @@
       // --- History ---
       function addToHistory(fileData) {
         uploadHistory.unshift(fileData);
+        saveHistory();
         renderHistory();
       }
 
       function renderHistory() {
+        var emptyState = document.getElementById('emptyState');
+        
         if (uploadHistory.length === 0) {
-          historySection.style.display = 'none';
+          historySection.style.display = 'block';
+          uploadHistoryContainer.innerHTML = '';
+          if (emptyState) emptyState.style.display = 'block';
           return;
         }
 
         historySection.style.display = 'block';
         uploadHistoryContainer.innerHTML = '';
+        if (emptyState) emptyState.style.display = 'none';
 
         for (var i = 0; i < uploadHistory.length; i++) {
           var item = uploadHistory[i];
@@ -1416,6 +1594,9 @@
           uploadHistoryContainer.appendChild(el);
         }
       }
+
+      // Load history on startup
+      loadHistory();
 
       function createHistoryItem(fileData) {
         var item = document.createElement('div');
@@ -1451,6 +1632,12 @@
         copyBtn.type = 'button';
         copyBtn.addEventListener('click', function () {
           copyToClipboard(fileData.url);
+          copyBtn.classList.add('copied');
+          copyBtn.textContent = 'Скопировано';
+          setTimeout(function() {
+            copyBtn.classList.remove('copied');
+            copyBtn.textContent = 'Скопировать';
+          }, 2000);
         });
 
         item.appendChild(preview);
