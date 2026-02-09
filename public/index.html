@@ -474,6 +474,177 @@
       }
     }
 
+    /* Auth Modal */
+    .auth-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(44, 36, 24, 0.85);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .auth-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .auth-modal {
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 40px 32px;
+      width: 90%;
+      max-width: 380px;
+      box-shadow: 0 25px 50px rgba(44, 36, 24, 0.25);
+      transform: scale(0.95) translateY(10px);
+      transition: transform 0.3s ease;
+    }
+
+    .auth-overlay.active .auth-modal {
+      transform: scale(1) translateY(0);
+    }
+
+    .auth-modal__title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.5rem;
+      color: #2C2418;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .auth-modal__subtitle {
+      font-size: 0.9rem;
+      color: #8C8277;
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .auth-modal__input {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 1rem;
+      border: 2px solid #E8E2D9;
+      border-radius: 10px;
+      background: #FAFAF7;
+      color: #2C2418;
+      font-family: inherit;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      margin-bottom: 16px;
+    }
+
+    .auth-modal__input:focus {
+      outline: none;
+      border-color: #1A7A6D;
+      box-shadow: 0 0 0 3px rgba(26, 122, 109, 0.1);
+    }
+
+    .auth-modal__input.error {
+      border-color: #C43E3E;
+      background: #FDF2F2;
+    }
+
+    .auth-modal__checkbox-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+      cursor: pointer;
+    }
+
+    .auth-modal__checkbox-wrapper input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: #1A7A6D;
+      cursor: pointer;
+    }
+
+    .auth-modal__checkbox-wrapper span {
+      font-size: 0.9rem;
+      color: #2C2418;
+      user-select: none;
+    }
+
+    .auth-modal__error {
+      color: #C43E3E;
+      font-size: 0.85rem;
+      text-align: center;
+      margin-bottom: 16px;
+      min-height: 20px;
+    }
+
+    .auth-modal__button {
+      width: 100%;
+      padding: 14px 24px;
+      background: #1A7A6D;
+      color: #FFFFFF;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+      font-family: inherit;
+    }
+
+    .auth-modal__button:hover {
+      background: #15665B;
+    }
+
+    .auth-modal__button:active {
+      transform: scale(0.98);
+    }
+
+    .auth-modal__button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Logout button */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .logout-btn {
+      background: transparent;
+      border: 1px solid #E8E2D9;
+      border-radius: 8px;
+      padding: 8px 16px;
+      font-size: 0.85rem;
+      color: #8C8277;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .logout-btn:hover {
+      border-color: #C43E3E;
+      color: #C43E3E;
+      background: #FDF2F2;
+    }
+
+    .main-content {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease;
+    }
+
+    .main-content.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
     /* Responsive */
     @media (max-width: 480px) {
       .container {
@@ -526,8 +697,28 @@
   </style>
 </head>
 <body>
+  <!-- Auth Modal -->
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-modal">
+      <div class="auth-modal__title">Требуется авторизация</div>
+      <div class="auth-modal__subtitle">Введите пароль для доступа к загрузке</div>
+      <input type="password" class="auth-modal__input" id="authPassword" placeholder="Пароль" autocomplete="off">
+      <label class="auth-modal__checkbox-wrapper">
+        <input type="checkbox" id="authRemember" checked>
+        <span>Запомнить меня</span>
+      </label>
+      <div class="auth-modal__error" id="authError"></div>
+      <button class="auth-modal__button" id="authSubmit">Войти</button>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div class="main-content" id="mainContent">
   <div class="container">
-    <h1><span>S3</span> Uploader</h1>
+    <div class="header">
+      <h1><span>S3</span> Uploader</h1>
+      <button class="logout-btn" id="logoutBtn">Выйти</button>
+    </div>
 
     <div class="drop-zone" id="dropZone">
       <div class="drop-zone__icon">
@@ -564,6 +755,7 @@
       <div id="uploadHistory"></div>
     </div>
   </div>
+  </div>
 
   <div id="toastContainer"></div>
 
@@ -576,6 +768,132 @@
       var ALLOWED_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
       var UPLOAD_URL = '/api/upload';
       var TOAST_DURATION = 3000;
+
+      // Auth configuration
+      var AUTH_PASSWORD = 'neodark';
+      var authOverlay = document.getElementById('authOverlay');
+      var mainContent = document.getElementById('mainContent');
+      var authPassword = document.getElementById('authPassword');
+      var authRemember = document.getElementById('authRemember');
+      var authSubmit = document.getElementById('authSubmit');
+      var authError = document.getElementById('authError');
+      var logoutBtn = document.getElementById('logoutBtn');
+      var currentPassword = null;
+
+      // Check if user is authenticated
+      function isAuthenticated() {
+        try {
+          var localAuth = localStorage.getItem('s3_auth');
+          var sessionAuth = sessionStorage.getItem('s3_auth');
+          return localAuth === 'true' || sessionAuth === 'true';
+        } catch (e) {
+          return false;
+        }
+      }
+
+      // Show auth modal
+      function showAuthModal() {
+        authOverlay.classList.add('active');
+        mainContent.classList.remove('active');
+        authPassword.value = '';
+        authPassword.classList.remove('error');
+        authError.textContent = '';
+        setTimeout(function() { authPassword.focus(); }, 100);
+      }
+
+      // Show main content
+      function showMainContent() {
+        authOverlay.classList.remove('active');
+        mainContent.classList.add('active');
+      }
+
+      // Handle login
+      function handleLogin() {
+        var password = authPassword.value.trim();
+        
+        if (!password) {
+          authError.textContent = 'Введите пароль';
+          authPassword.classList.add('error');
+          return;
+        }
+
+        authSubmit.disabled = true;
+        authSubmit.textContent = 'Проверка...';
+
+        // Verify password by making a test request
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', UPLOAD_URL);
+        xhr.setRequestHeader('X-Password', password);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        
+        xhr.onload = function() {
+          authSubmit.disabled = false;
+          authSubmit.textContent = 'Войти';
+          
+          if (xhr.status === 401) {
+            authError.textContent = 'Неверный пароль';
+            authPassword.classList.add('error');
+            authPassword.value = '';
+            authPassword.focus();
+          } else if (xhr.status === 429) {
+            authError.textContent = 'Слишком много попыток. Подождите минуту.';
+            authPassword.classList.add('error');
+          } else {
+            // Password is correct (any other response means auth passed)
+            currentPassword = password;
+            
+            // Save to storage based on remember checkbox
+            try {
+              if (authRemember.checked) {
+                localStorage.setItem('s3_auth', 'true');
+              } else {
+                sessionStorage.setItem('s3_auth', 'true');
+              }
+            } catch (e) {}
+            
+            showMainContent();
+            showToast('Авторизация успешна!', 'success');
+          }
+        };
+        
+        xhr.onerror = function() {
+          authSubmit.disabled = false;
+          authSubmit.textContent = 'Войти';
+          authError.textContent = 'Ошибка соединения';
+        };
+        
+        // Send empty body just to test auth
+        xhr.send(JSON.stringify({ test: true }));
+      }
+
+      // Handle logout
+      function handleLogout() {
+        try {
+          localStorage.removeItem('s3_auth');
+          sessionStorage.removeItem('s3_auth');
+        } catch (e) {}
+        currentPassword = null;
+        showAuthModal();
+        showToast('Вы вышли из системы', 'success');
+      }
+
+      // Auth event listeners
+      authSubmit.addEventListener('click', handleLogin);
+      authPassword.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') handleLogin();
+      });
+      authPassword.addEventListener('input', function() {
+        authPassword.classList.remove('error');
+        authError.textContent = '';
+      });
+      logoutBtn.addEventListener('click', handleLogout);
+
+      // Check auth on load
+      if (isAuthenticated()) {
+        showMainContent();
+      } else {
+        showAuthModal();
+      }
 
       // Compression settings
       var COMPRESS_THRESHOLD = 1 * 1024 * 1024; // 1 MB
@@ -935,6 +1253,30 @@
 
             removeProgressItemsDelayed(progressItems);
 
+          } else if (xhr.status === 401) {
+            // Session expired or invalid password
+            for (var q = 0; q < progressItems.length; q++) {
+              setProgressError(progressItems[q]);
+            }
+            showToast('Сессия истекла. Требуется повторный вход.', 'error');
+            removeProgressItemsDelayed(progressItems);
+            
+            // Clear storage and show auth modal
+            try {
+              localStorage.removeItem('s3_auth');
+              sessionStorage.removeItem('s3_auth');
+            } catch (e) {}
+            currentPassword = null;
+            setTimeout(showAuthModal, 500);
+            
+          } else if (xhr.status === 429) {
+            // Rate limit exceeded
+            for (var r = 0; r < progressItems.length; r++) {
+              setProgressError(progressItems[r]);
+            }
+            showToast('Слишком много запросов. Подождите минуту.', 'error');
+            removeProgressItemsDelayed(progressItems);
+            
           } else {
             var errorMsg = 'Ошибка загрузки';
             try {
@@ -946,8 +1288,8 @@
               // ignore parse error
             }
 
-            for (var q = 0; q < progressItems.length; q++) {
-              setProgressError(progressItems[q]);
+            for (var s = 0; s < progressItems.length; s++) {
+              setProgressError(progressItems[s]);
             }
             showToast(errorMsg, 'error');
             removeProgressItemsDelayed(progressItems);
@@ -970,6 +1312,7 @@
         });
 
         xhr.open('POST', UPLOAD_URL);
+        xhr.setRequestHeader('X-Password', currentPassword || AUTH_PASSWORD);
         xhr.send(formData);
       }
 

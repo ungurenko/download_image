@@ -16,6 +16,7 @@ if (!S3_CONFIGURED) {
 const express = require('express');
 const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const rateLimit = require('express-rate-limit');
 
 // ---------------------------------------------------------------------------
 // S3 client (initialised only when credentials are available)
@@ -33,6 +34,31 @@ const s3 = S3_CONFIGURED
 
 const BUCKET = 'my-data';
 const BUCKET_URL = `https://${BUCKET}.s3.twcstorage.ru`;
+
+// ---------------------------------------------------------------------------
+// Authentication
+// ---------------------------------------------------------------------------
+const AUTH_PASSWORD = 'neodark';
+
+// Rate limiting for auth attempts
+const authLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // 10 attempts per window
+  message: { error: 'Слишком много попыток. Подождите минуту.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Auth middleware
+function requireAuth(req, res, next) {
+  const password = req.headers['x-password'];
+  
+  if (!password || password !== AUTH_PASSWORD) {
+    return res.status(401).json({ error: 'Неверный пароль' });
+  }
+  
+  next();
+}
 
 // ---------------------------------------------------------------------------
 // Allowed formats
@@ -122,7 +148,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ---------------------------------------------------------------------------
 // POST /api/upload
 // ---------------------------------------------------------------------------
-app.post('/api/upload', (req, res) => {
+app.post('/api/upload', authLimiter, requireAuth, (req, res) => {
   if (!S3_CONFIGURED) {
     return res.status(500).json({ error: 'S3 credentials not configured.' });
   }
